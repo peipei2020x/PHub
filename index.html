@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Hub Pro - 高機能AIプロンプト管理ツール</title>
+    <style>
+        /* --- Reset & Base Styles --- */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1a1a1a;
+            --primary-color: #4a90e2;
+            --primary-color-light: #e4effc;
+            --primary-text-color: #4a90e2; /* Color for text on primary-color-light background */
+            --secondary-color: #f3f4f6;
+            --border-color: #d1d5db;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --sidebar-bg: #f9fafb;
+            --modal-bg: rgba(0, 0, 0, 0.5);
+            --success-color: #22c55e;
+            --danger-color: #ef4444;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            --code-bg: #e5e7eb;
+            --code-color: #374151;
+            /* Design Customization Variables */
+            --background-image: none;
+            --background-opacity: 1;
+            --background-blur: 0px;
+            --background-attachment: scroll;
+        }
+
+        .dark-mode {
+            --bg-color: #111827;
+            --text-color: #e5e7eb;
+            --primary-color: #60a5fa;
+            --primary-color-light: #1f293d;
+            --primary-text-color: #93c5fd;
+            --secondary-color: #1f293d;
+            --border-color: #374151;
+            --shadow-color: rgba(0, 0, 0, 0.25);
+            --sidebar-bg: #1f293d;
+            --modal-bg: rgba(0, 0, 0, 0.7);
+            --code-bg: #374151;
+            --code-color: #d1d5db;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: var(--background-image);
+            background-size: cover;
+            background-position: center;
+            background-attachment: var(--background-attachment);
+            opacity: var(--background-opacity);
+            filter: blur(var(--background-blur));
+            transition: opacity 0.3s, filter 0.3s;
+        }
+
+
+        button, input, textarea, select {
+            font-family: inherit;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            transition: all 0.2s ease-in-out;
+        }
+        
+        input:focus-visible, textarea:focus-visible, select:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+            border-color: var(--primary-color);
+        }
+
+
+        button {
+            cursor: pointer;
+            background-color: var(--secondary-color);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .btn-primary { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .btn-danger { background-color: var(--danger-color); color: white; border-color: var(--danger-color); }
+        .icon-btn { background: none; border: none; padding: 4px; font-size: 1.2rem; line-height: 1; color: var(--text-color); opacity: 0.7; }
+        .icon-btn:hover { opacity: 1; }
+        .icon-btn svg { width: 18px; height: 18px; }
+
+        /* --- Layout --- */
+        .container { display: flex; width: 100%; height: 100%; }
+        .sidebar { width: 280px; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 16px; transition: background-color 0.3s; overflow-y: auto; flex-shrink: 0; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; padding: 24px; overflow-y: auto; }
+
+        /* --- Header --- */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .header h1 { font-size: 1.8rem; font-weight: 700; }
+        .actions { display: flex; gap: 10px; align-items: center; }
+
+        /* --- Sidebar Content --- */
+        .sidebar-header { margin-bottom: 16px; }
+        .sidebar-header h2 { font-size: 1.2rem; margin-bottom: 8px; }
+        #new-category-form { display: flex; gap: 8px; }
+        #new-category-input { flex-grow: 1; }
+        #add-category-btn { padding: 8px 12px; }
+
+        #category-list, #sidebar-fixed-list { list-style: none; }
+        #sidebar-fixed-list { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+        .category-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-radius: 6px; cursor: pointer; user-select: none; transition: background-color 0.2s, color 0.2s; margin-bottom: 4px; }
+        .category-item:hover, .category-item.ghost { background-color: var(--secondary-color); }
+        .category-item.active { background-color: var(--primary-color-light); color: var(--primary-text-color); font-weight: 600; }
+        .category-item.active .icon-btn { color: var(--primary-text-color); }
+        .category-name { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 8px; }
+        .category-actions { display: none; gap: 4px; }
+        .category-item:hover .category-actions { display: flex; }
+
+        /* --- Main Content --- */
+        .toolbar { display: flex; gap: 16px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; }
+        .search-bar { flex-grow: 1; font-size: 1rem; padding: 10px; min-width: 200px; }
+        #ai-filter, #sort-order { padding: 10px; }
+
+        #prompt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+        #prompt-list-empty { text-align: center; padding: 48px; background-color: var(--secondary-color); border-radius: 8px; border: 2px dashed var(--border-color); color: var(--text-color); opacity: 0.7;}
+        #prompt-list-empty h3 { margin-bottom: 8px; }
+        #tag-list-view { padding: 16px; }
+        #tag-list-view h2 { margin-bottom: 16px; }
+        #tag-list-container { display: flex; flex-wrap: wrap; gap: 10px; }
+
+
+        .prompt-card { background-color: var(--secondary-color); border-radius: 8px; border: 1px solid var(--border-color); padding: 16px; display: flex; flex-direction: column; box-shadow: 0 1px 3px var(--shadow-color); transition: transform 0.2s, box-shadow 0.2s; }
+        .prompt-card.ghost { opacity: 0.5; background: var(--primary-color-light); }
+        .prompt-card:hover { transform: translateY(-4px); box-shadow: 0 4px 10px var(--shadow-color); }
+        .prompt-card.archived { opacity: 0.7; }
+
+        .prompt-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px; }
+        .prompt-card-title { font-size: 1.1rem; font-weight: 600; word-break: break-all; flex-grow: 1;}
+        .prompt-card-fav-btn { color: var(--border-color); padding: 0; font-size: 1.3rem; }
+        .prompt-card-fav-btn.favorited { color: #facc15; }
+        .prompt-card-content-wrapper { position: relative; }
+        .prompt-card-content { flex-grow: 1; font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; background-color: var(--bg-color); padding: 12px; border-radius: 6px; overflow-y: auto; max-height: 150px; word-break: break-word; }
+        .prompt-card-content .highlight { color: white; padding: 0.1em 0.3em; border-radius: 4px; font-family: monospace; }
+        .quick-copy-btn { position: absolute; top: 8px; right: 8px; z-index: 10; background-color: rgba(0,0,0,0.5); color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        .prompt-card-content-wrapper:hover .quick-copy-btn { opacity: 1; pointer-events: auto; }
+
+        .prompt-card-info { font-size: 0.8rem; color: var(--text-color); opacity: 0.7; margin: 12px 0 0; }
+        .prompt-card-info a { color: var(--primary-color); text-decoration: none; }
+        .prompt-card-info a:hover { text-decoration: underline; }
+        .prompt-card-url-actions { display: inline-flex; gap: 4px; margin-left: 8px; }
+        .prompt-card-url-actions button { padding: 0; font-size: 0.8rem; }
+        .prompt-card-tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag { background-color: var(--primary-color-light); color: var(--primary-text-color); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s, color 0.2s; }
+        .tag:hover { background-color: var(--primary-color); color: white; }
+        .prompt-card-footer { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .prompt-card-footer .actions-left { display: flex; gap: 8px; }
+        .prompt-card-footer .actions-right { display: flex; gap: 8px; }
+        .prompt-card-footer button { padding: 6px 10px; font-size: 0.9rem; }
+
+        /* --- Modal --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--modal-bg); display: none; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.3s ease; }
+        .modal-overlay.visible { display: flex; }
+        .modal-content { background-color: var(--bg-color); padding: 24px; border-radius: 8px; width: 90%; max-width: 700px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 5px 15px var(--shadow-color); animation: slideIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+        .modal-header h2 { font-size: 1.4rem; }
+        .modal-body { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 8px; }
+        .modal-body .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .modal-body label { font-weight: 600; margin-bottom: 4px; display: block; }
+        .modal-body input, .modal-body textarea, .modal-body select { width: 100%; }
+        #prompt-form-content { min-height: 200px; resize: vertical; }
+        .modal-footer { margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px; }
+        .close-button { background: none; border: none; font-size: 1.8rem; cursor: pointer; line-height: 1; }
+        
+        /* Highlight Toolbar */
+        .highlight-toolbar { display: flex; gap: 8px; align-items: center; background-color: var(--secondary-color); padding: 8px; border-radius: 6px; margin-top: -12px; margin-bottom: 8px; }
+        .highlight-toolbar label { font-size: 0.9rem; margin-bottom: 0;}
+        #highlight-color-picker { padding: 2px; height: 30px; border-radius: 4px; cursor: pointer; }
+        #highlight-btn { padding: 4px 10px; font-size: 0.9rem; }
+        
+        /* --- Settings Modal --- */
+        #settings-modal .modal-content { max-width: 800px; }
+        .settings-container { display: flex; min-height: 400px;}
+        .settings-tabs { width: 200px; border-right: 1px solid var(--border-color); padding-right: 16px; flex-shrink: 0;}
+        .settings-tabs button { display: block; width: 100%; text-align: left; padding: 12px; border: none; background: none; margin-bottom: 8px; font-size: 1rem; }
+        .settings-tabs button.active { background-color: var(--primary-color-light); color: var(--primary-text-color); font-weight: 600; }
+        .settings-content { flex-grow: 1; padding-left: 16px; overflow-y: auto; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .settings-section { margin-bottom: 24px; }
+        .settings-section h3 { margin-bottom: 12px; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .settings-field { margin-bottom: 16px; }
+        .settings-field label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .settings-field input[type="range"] { width: 100%; }
+        #storage-list li { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); }
+        #storage-list li:last-child { border-bottom: none; }
+        
+        /* Help Tab Styles */
+        .help-section { margin-bottom: 20px; }
+        .help-section h4 { font-size: 1.1rem; margin-bottom: 10px; cursor: pointer; }
+        .help-section-content { display: none; padding-left: 15px; border-left: 2px solid var(--primary-color); font-size: 0.95rem; line-height: 1.6; }
+        .help-section-content.visible { display: block; }
+        .help-section-content ul { padding-left: 20px; }
+        .help-section-content code { background-color: var(--code-bg); color: var(--code-color); padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+        
+        /* Toast Notification */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; }
+        .toast { background-color: #333; color: white; padding: 12px 20px; border-radius: 6px; margin-top: 10px; font-size: 0.9rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transform: translateY(20px); transition: opacity 0.3s, transform 0.3s; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background-color: var(--success-color); }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border-color); flex-direction: row; overflow-x: auto; padding: 8px; align-items: center; }
+            #sidebar-fixed-list, #category-list { display: flex; flex-direction: row; gap: 8px; padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+            #sidebar-fixed-list { padding-right: 8px; margin-right: 8px; border-right: 1px solid var(--border-color); }
+            .sidebar-header { display: none; } /* Hide form on mobile for simplicity, can be a modal button */
+            .category-item { flex-shrink: 0; }
+            .main-content { padding: 16px; }
+            #prompt-list { grid-template-columns: 1fr; }
+            .toolbar { flex-direction: column; align-items: stretch; }
+            .settings-container { flex-direction: column; }
+            .settings-tabs { display: flex; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border-color); width: 100%; margin-bottom: 16px; }
+            .settings-tabs button { flex-shrink: 0; }
+            .settings-content { padding-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>カテゴリ</h2>
+                <form id="new-category-form">
+                    <input type="text" id="new-category-input" placeholder="新しいカテゴリ名..." required>
+                    <button type="submit" id="add-category-btn" title="カテゴリを追加" class="btn-primary">+</button>
+                </form>
+            </div>
+            <ul id="sidebar-fixed-list"></ul>
+            <ul id="category-list"></ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <h1 id="current-category-title">すべてのプロンプト</h1>
+                <div class="actions">
+                    <button id="add-prompt-btn" class="btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>プロンプトを追加</span>
+                    </button>
+                    <button id="open-settings-btn" class="icon-btn" title="設定">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </button>
+                </div>
+            </header>
+            <div id="toolbar" class="toolbar">
+                 <input type="search" id="search-bar" class="search-bar" placeholder="タイトル, 本文, タグで検索...">
+                 <select id="ai-filter">
+                     <option value="all">すべてのAI</option>
+                 </select>
+                 <select id="sort-order">
+                    <option value="manual">手動（ドラッグ順）</option>
+                    <option value="usage_desc">使用頻度順</option>
+                    <option value="updated_desc">更新日順 (新しい)</option>
+                    <option value="updated_asc">更新日順 (古い)</option>
+                    <option value="title_asc">タイトル順 (A-Z)</option>
+                    <option value="title_desc">タイトル順 (Z-A)</option>
+                    <option value="created_desc">作成日順 (新しい)</option>
+                    <option value="created_asc">作成日順 (古い)</option>
+                 </select>
+            </div>
+            <div id="prompt-list-container">
+                <div id="prompt-list"></div>
+                <div id="tag-list-view" style="display: none;"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="prompt-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">プロンプトを新規作成</h2>
+                <button class="close-button" data-close-modal>&times;</button>
+            </div>
+            <form id="prompt-form" class="modal-body">
+                <input type="hidden" id="prompt-form-id">
+                <div>
+                    <label for="prompt-form-title">タイトル</label>
+                    <input type="text" id="prompt-form-title" required>
+                </div>
+                <div>
+                    <label for="prompt-form-content">プロンプト本文</label>
+                    <div class="highlight-toolbar">
+                        <label for="highlight-color-picker">ハイライト色:</label>
+                        <input type="color" id="highlight-color-picker" value="#8b5cf6">
+                        <button type="button" id="highlight-btn">選択範囲をハイライト</button>
+                    </div>
+                    <textarea id="prompt-form-content" rows="10" required></textarea>
+                </div>
+                <div class="form-grid">
+                    <div>
+                        <label for="prompt-form-category">カテゴリ</label>
+                        <select id="prompt-form-category"></select>
+                    </div>
+                    <div>
+                         <label for="prompt-form-ai">使用AI</label>
+                         <input type="text" id="prompt-form-ai" placeholder="例: ChatGPT, Midjourney">
+                    </div>
+                </div>
+                 <div>
+                    <label for="prompt-form-url">関連URL</label>
+                    <input type="url" id="prompt-form-url" placeholder="https://example.com">
+                </div>
+                <div>
+                    <label for="prompt-form-tags">タグ</label>
+                    <input type="text" id="prompt-form-tags" placeholder="例: 画像生成, 猫, 水彩風">
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button data-close-modal>キャンセル</button>
+                <button id="save-prompt-btn" class="btn-primary">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>設定</h2>
+                <button class="close-button" data-close-modal>&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-container">
+                    <div class="settings-tabs">
+                        <button class="tab-btn active" data-tab="general">一般</button>
+                        <button class="tab-btn" data-tab="design">デザイン</button>
+                        <button class="tab-btn" data-tab="data">データ管理</button>
+                        <button class="tab-btn" data-tab="help">ヘルプ</button>
+                    </div>
+                    <div class="settings-content">
+                        <!-- General Tab -->
+                        <div id="tab-general" class="tab-pane active">
+                            <div class="settings-section">
+                                <h3>一般設定</h3>
+                                <div class="settings-field">
+                                    <label for="theme-toggle">テーマ</label>
+                                    <button id="theme-toggle" style="width: 100%;">テーマを切り替え</button>
+                                </div>
+                                <div class="settings-field">
+                                    <label for="tag-delimiter">タグの区切り文字</label>
+                                    <select id="tag-delimiter" style="width: 100%;">
+                                        <option value=",">カンマ (,)</option>
+                                        <option value=" ">スペース ( )</option>
+                                        <option value="tab">タブ</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Design Tab -->
+                        <div id="tab-design" class="tab-pane">
+                            <div class="settings-section">
+                                <h3>デザインカスタマイズ</h3>
+                                <div class="settings-field">
+                                    <label for="primary-color-picker">メインカラー</label>
+                                    <input type="color" id="primary-color-picker">
+                                </div>
+                                <div class="settings-field">
+                                    <label for="background-image-input">背景画像</label>
+                                    <input type="file" id="background-image-input" accept="image/*">
+                                    <button id="clear-background-btn" style="margin-top: 8px;">背景をクリア</button>
+                                </div>
+                                <div class="settings-field">
+                                    <label>背景の不透明度: <span id="bg-opacity-value"></span></label>
+                                    <input type="range" id="bg-opacity-slider" min="0" max="1" step="0.05">
+                                </div>
+                                <div class="settings-field">
+                                    <label>背景のぼかし: <span id="bg-blur-value"></span>px</label>
+                                    <input type="range" id="bg-blur-slider" min="0" max="20" step="1">
+                                </div>
+                                <div class="settings-field">
+                                    <label for="bg-scroll-toggle">背景をスクロールに追従させない</label>
+                                    <input type="checkbox" id="bg-scroll-toggle">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Data Tab -->
+                        <div id="tab-data" class="tab-pane">
+                           <div class="settings-section">
+                                <h3>インポート/エクスポート</h3>
+                                <div style="display: flex; gap: 8px;">
+                                    <button id="import-btn" style="flex: 1;">インポート</button>
+                                    <input type="file" id="import-file-input" accept=".json" style="display:none;">
+                                    <button id="export-btn" style="flex: 1;">エクスポート</button>
+                                </div>
+                            </div>
+                             <div class="settings-section">
+                                <h3>ストレージ管理</h3>
+                                <p>合計使用量: <strong id="total-storage-usage">0 KB</strong></p>
+                                <div id="storage-stats"></div>
+                                <ul id="storage-list"></ul>
+                            </div>
+                             <div class="settings-section">
+                                <h3>ゴミ箱</h3>
+                                <div class="settings-field">
+                                    <label for="archive-auto-delete-toggle">30日経過したアイテムを自動で完全削除する</label>
+                                    <input type="checkbox" id="archive-auto-delete-toggle">
+                                </div>
+                                <button id="empty-archive-btn" class="btn-danger">ゴミ箱を空にする</button>
+                            </div>
+                            <div class="settings-section">
+                                <h3>データリセット</h3>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <button id="blank-state-btn" class="btn-danger">全プロンプトを削除 (ブランク状態)</button>
+                                    <button id="delete-all-btn" class="btn-danger">全データ削除 (完全初期化)</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Help Tab -->
+                        <div id="tab-help" class="tab-pane">
+                            <div class="help-section">
+                                <h4 class="help-section-title">▶ 使い方ガイド</h4>
+                                <div class="help-section-content">
+                                    <h5>基本操作</h5>
+                                    <ul>
+                                        <li><strong>プロンプトの追加:</strong> 右上の「プロンプトを追加」ボタンから新しいプロンプトを作成できます。</li>
+                                        <li><strong>カテゴリの作成:</strong> 左サイドバーの入力欄にカテゴリ名を入れて「+」ボタンで新しいカテゴリを追加できます。</li>
+                                        <li><strong>編集と削除:</strong> プロンプトカードやカテゴリにマウスを合わせると、編集・削除ボタンが表示されます。</li>
+                                        <li><strong>ドラッグ＆ドロップ:</strong> プロンプトカードやカテゴリは、ドラッグ＆ドロップで順番を入れ替えることができます。並び替えた順序は保存されます。</li>
+                                    </ul>
+                                    <h5>便利な機能</h5>
+                                    <ul>
+                                        <li><strong>検索:</strong> 上部の検索バーで、タイトル・本文・タグを対象に全文検索ができます。</li>
+                                        <li><strong>ソート:</strong> 「使用頻度順」で並び替えると、よくコピーするプロンプトが自動で上に表示されます。「手動」にするとドラッグで並べ替えた順序を維持できます。</li>
+                                        <li><strong>フィルタ:</strong> 検索バーの横のプルダウンで、特定のAIサービスを使用しているプロンプトのみに絞り込めます。</li>
+                                        <li><strong>ハイライト機能:</strong> プロンプト作成・編集画面で、本文の一部を選択し、ツールバーの「ハイライト」ボタンを押すと、選択した色でテキストを強調できます。例: <code>{[重要な部分]:[#ff0000]}</code></li>
+                                        <li><strong>タグ一覧:</strong> サイドバーの「タグ」メニューから、登録されている全タグを確認し、タグでプロンプトを絞り込むことができます。</li>
+                                        <li><strong>ウィンドウ化:</strong> プロンプトカードの「ウィンドウ」ボタンで、そのプロンプトだけを別ウィンドウで表示できます。作業の参照用に便利です。</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="help-section">
+                                <h4 class="help-section-title">▶ 利用規約</h4>
+                                <div class="help-section-content">
+                                    <p>本アプリケーション「Prompt Hub Pro」をご利用いただくにあたり、以下の利用規約に同意したものとみなします。</p>
+                                    <ol>
+                                        <li><strong>データの保存について:</strong> 本アプリケーションは、すべてのデータをユーザーの利用するウェブブラウザのローカルストレージに保存します。開発者サーバーにデータが送信・保存されることは一切ありません。</li>
+                                        <li><strong>自己責任の原則:</strong> データの管理（バックアップ、削除等）はすべてユーザー自身の責任において行うものとします。ブラウザのキャッシュクリアや設定変更、予期せぬエラー等によりデータが消失した場合でも、開発者は一切の責任を負いません。定期的なエクスポート機能によるバックアップを強く推奨します。</li>
+                                        <li><strong>免責事項:</strong> 本アプリケーションの使用によって生じたいかなる損害についても、開発者は責任を負いかねます。本アプリケーションは現状有姿で提供され、動作の正確性や完全性を保証するものではありません。</li>
+                                        <li><strong>禁止事項:</strong> 日本法に反する内容、民法上問題になる内容の保存を禁止します。</li>
+                                        <li><strong>規約の変更:</strong> 開発者は、必要に応じて本利用規約を予告なく変更できるものとします。変更後の規約は、アプリケーション上に表示された時点から効力を生じるものとします。</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+             <div class="modal-footer">
+                <button data-close-modal>閉じる</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast-container"></div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const getEl = (id) => document.getElementById(id);
+            
+            // --- STATE MANAGEMENT ---
+            const defaultSettings = {
+                theme: 'light',
+                tagDelimiter: ',',
+                archiveAutoDelete: true,
+                sortOrder: 'manual', // Default sort order
+                design: {
+                    primaryColor: '#4a90e2',
+                    backgroundImage: '',
+                    backgroundOpacity: 0.1,
+                    backgroundBlur: 2,
+                    backgroundAttachment: 'scroll',
+                }
+            };
+
+            let state = {
+                categories: [],
+                prompts: [],
+                archivedPrompts: [],
+                activeCategoryId: 'all',
+                editingCategoryId: null,
+                settings: JSON.parse(JSON.stringify(defaultSettings)) // Deep copy
+            };
+
+            // --- DOM ELEMENTS ---
+            const categoryList = getEl('category-list');
+            const sidebarFixedList = getEl('sidebar-fixed-list');
+            const newCategoryForm = getEl('new-category-form');
+            const newCategoryInput = getEl('new-category-input');
+            const promptList = getEl('prompt-list');
+            const tagListView = getEl('tag-list-view');
+            const currentCategoryTitle = getEl('current-category-title');
+            const addPromptBtn = getEl('add-prompt-btn');
+            const promptModal = getEl('prompt-modal');
+            const savePromptBtn = getEl('save-prompt-btn');
+            const promptForm = getEl('prompt-form');
+            const modalTitle = getEl('modal-title');
+            const searchBar = getEl('search-bar');
+            const openSettingsBtn = getEl('open-settings-btn');
+            const settingsModal = getEl('settings-modal');
+            const aiFilter = getEl('ai-filter');
+            const sortOrder = getEl('sort-order');
+            const toolbar = getEl('toolbar');
+            
+            // --- UTILITY FUNCTIONS ---
+            const showToast = (message, type = 'success') => {
+                const container = getEl('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                container.appendChild(toast);
+
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    toast.addEventListener('transitionend', () => toast.remove());
+                }, 3000);
+            };
+            
+            // --- DATA PERSISTENCE ---
+            const saveData = () => {
+                try {
+                    const dataToSave = {
+                        categories: state.categories,
+                        prompts: state.prompts,
+                        archivedPrompts: state.archivedPrompts,
+                    };
+                    localStorage.setItem('promptHubData', JSON.stringify(dataToSave));
+                    localStorage.setItem('promptHubSettings', JSON.stringify(state.settings));
+                } catch (error) {
+                    console.error("Error saving data:", error);
+                    showToast("データの保存に失敗しました。", "danger");
+                }
+            };
+
+            const loadData = () => {
+                try {
+                    const dataString = localStorage.getItem('promptHubData');
+                    const settingsString = localStorage.getItem('promptHubSettings');
+
+                    // Load settings with defaults
+                    const savedSettings = settingsString ? JSON.parse(settingsString) : {};
+                    state.settings = {
+                        ...defaultSettings,
+                        ...savedSettings,
+                        design: {
+                            ...defaultSettings.design,
+                            ...(savedSettings.design || {})
+                        }
+                    };
+                    
+                    if (dataString) {
+                        const data = JSON.parse(dataString);
+                        state.categories = data.categories || [];
+                        // Add usageCount property for backward compatibility
+                        state.prompts = (data.prompts || []).map(p => ({ ...p, usageCount: p.usageCount || 0 }));
+                        state.archivedPrompts = data.archivedPrompts || [];
+                    } else {
+                        // Initialize with default data for first-time users
+                        const now = new Date().toISOString();
+                        const cat1Id = 'cat-' + Date.now();
+                        const cat2Id = 'cat-' + (Date.now() + 1);
+                        
+                        state.categories = [
+                            { id: cat1Id, name: '文章AI' },
+                            { id: cat2Id, name: '画像AI' }
+                        ];
+                        state.prompts = [
+                            {
+                                id: 'prompt-' + Date.now(),
+                                categoryId: cat1Id,
+                                title: 'ブログ記事の要約',
+                                content: '以下のブログ記事を3つの箇条書きで要約してください。\n\nブログ記事：\n{[ここに記事を貼り付け]}',
+                                aiService: 'ChatGPT',
+                                tags: ['要約', 'ブログ'],
+                                favorited: false,
+                                createdAt: now,
+                                updatedAt: now,
+                                url: '',
+                                usageCount: 0
+                            },
+                            {
+                                id: 'prompt-' + (Date.now() + 1),
+                                categoryId: cat2Id,
+                                title: '水彩風のかわいい猫',
+                                content: 'A cute cat, watercolor painting style, soft colors, white background, detailed illustration',
+                                aiService: 'Midjourney',
+                                tags: ['猫', '水彩風', 'イラスト'],
+                                favorited: true,
+                                createdAt: now,
+                                updatedAt: now,
+                                url: '',
+                                usageCount: 5 // Example usage
+                            }
+                        ];
+                        state.archivedPrompts = [];
+                        saveData(); // Save initial data
+                    }
+                    cleanupArchive();
+                } catch (error) {
+                    console.error("Error loading data:", error);
+                    showToast("データの読み込みに失敗しました。", "danger");
+                }
+            };
+
+            // --- RENDER FUNCTIONS ---
+            const renderAll = () => {
+                sortOrder.value = state.settings.sortOrder; // Set sort dropdown value from state
+                renderCategories();
+                renderPrompts();
+                updateDesign();
+                populateAiFilter();
+            };
+            
+            const renderCategories = () => {
+                sidebarFixedList.innerHTML = '';
+                categoryList.innerHTML = '';
+
+                const fixedItems = [
+                    { id: 'all', name: 'すべてのプロンプト', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>' },
+                    { id: 'favorites', name: 'お気に入り', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>' },
+                    { id: 'tags', name: 'タグ', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>' },
+                    { id: 'archive', name: 'ゴミ箱', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>' }
+                ];
+                
+                fixedItems.forEach(cat => sidebarFixedList.appendChild(createCategoryItem(cat, false)));
+                state.categories.forEach(cat => categoryList.appendChild(createCategoryItem(cat, true)));
+            };
+            
+            const createCategoryItem = (category, isDraggable) => {
+                const li = document.createElement('li');
+                li.className = 'category-item';
+                li.dataset.id = category.id;
+                if (state.activeCategoryId === category.id) li.classList.add('active');
+                
+                let content = `${category.icon || ''}<span class="category-name">${category.name}</span>`;
+
+                if (isDraggable) {
+                    const actions = document.createElement('div');
+                    actions.className = 'category-actions';
+                    actions.innerHTML = `
+                        <button class="icon-btn" title="編集"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                        <button class="icon-btn" title="削除"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    `;
+                    actions.querySelector('[title="編集"]').onclick = (e) => { e.stopPropagation(); editCategory(category.id); };
+                    actions.querySelector('[title="削除"]').onclick = (e) => { e.stopPropagation(); deleteCategory(category.id); };
+                    li.innerHTML = content;
+                    li.appendChild(actions);
+                    li.setAttribute('draggable', true);
+                } else {
+                    li.innerHTML = content;
+                }
+
+                li.addEventListener('click', () => {
+                    state.activeCategoryId = category.id;
+                    renderAll();
+                });
+                return li;
+            };
+            
+            // Drag and Drop for Categories
+            let draggedCat = null;
+            categoryList.addEventListener('dragstart', e => {
+                if(e.target.classList.contains('category-item') && e.target.dataset.id.startsWith('cat-')) {
+                    draggedCat = e.target;
+                    setTimeout(() => e.target.style.display = 'none', 0);
+                }
+            });
+            categoryList.addEventListener('dragend', () => {
+                 if (draggedCat) {
+                    draggedCat.style.display = '';
+                    const newOrder = [...categoryList.querySelectorAll('.category-item[data-id^="cat-"]')].map(item => item.dataset.id);
+                    state.categories.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+                    draggedCat = null;
+                    saveData();
+                 }
+            });
+            categoryList.addEventListener('dragover', e => {
+                e.preventDefault();
+                const target = e.target.closest('.category-item');
+                if (target && target !== draggedCat && target.dataset.id.startsWith('cat-')) {
+                    const rect = target.getBoundingClientRect();
+                    const next = (e.clientY - rect.top) / rect.height > 0.5;
+                    categoryList.insertBefore(draggedCat, next ? target.nextSibling : target);
+                }
+            });
+
+            // Drag and Drop for Prompts
+            let draggedPrompt = null;
+            promptList.addEventListener('dragstart', e => {
+                const target = e.target.closest('.prompt-card');
+                if (target) {
+                    draggedPrompt = target;
+                    setTimeout(() => target.classList.add('ghost'), 0);
+                }
+            });
+            promptList.addEventListener('dragend', e => {
+                if(draggedPrompt) {
+                    draggedPrompt.classList.remove('ghost');
+                    const newOrder = [...promptList.querySelectorAll('.prompt-card')].map(item => item.dataset.id);
+                    // Reorder only the visible prompts
+                    const visibleIds = new Set(newOrder);
+                    const visiblePrompts = state.prompts.filter(p => visibleIds.has(p.id))
+                                                      .sort((a,b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+                    const otherPrompts = state.prompts.filter(p => !visibleIds.has(p.id));
+                    state.prompts = [...visiblePrompts, ...otherPrompts];
+                    
+                    draggedPrompt = null;
+                    saveData();
+                    
+                    // Switch to manual sort order after dragging
+                    if (sortOrder.value !== 'manual') {
+                        sortOrder.value = 'manual';
+                        sortOrder.dispatchEvent(new Event('change'));
+                    }
+                }
+            });
+            promptList.addEventListener('dragover', e => {
+                e.preventDefault();
+                const target = e.target.closest('.prompt-card');
+                if (target && target !== draggedPrompt) {
+                     const rect = target.getBoundingClientRect();
+                     const next = (e.clientY - rect.top) / rect.height > 0.5;
+                     promptList.insertBefore(draggedPrompt, next ? target.nextSibling : target);
+                }
+            });
+
+            const highlightText = (text) => {
+                if (!text) return '';
+                let highlighted = text.replace(/{\[([^\]]+)\]:\[([^\]]+)\]}/g, (match, word, color) => {
+                    return `<span class="highlight" style="background-color: ${color};">${word}</span>`;
+                });
+                return highlighted.replace(/\{(?!\[)(.*?)\}/g, '<span class="highlight" style="background-color: var(--primary-color);">$1</span>');
+            };
+
+            const renderPrompts = () => {
+                // Show/hide views
+                if (state.activeCategoryId === 'tags') {
+                    promptList.style.display = 'none';
+                    tagListView.style.display = 'block';
+                    toolbar.style.display = 'none';
+                    currentCategoryTitle.textContent = 'タグ一覧';
+                    renderTagListView();
+                    return;
+                }
+                promptList.style.display = 'grid';
+                tagListView.style.display = 'none';
+                toolbar.style.display = 'flex';
+
+
+                const searchTerm = searchBar.value.toLowerCase();
+                const selectedAi = aiFilter.value;
+                const currentSortOrder = sortOrder.value;
+                let sourcePrompts;
+                const isArchiveView = state.activeCategoryId === 'archive';
+                
+                // Set source prompts based on view
+                if (isArchiveView) {
+                    currentCategoryTitle.textContent = 'ゴミ箱';
+                    sourcePrompts = state.archivedPrompts;
+                } else if (state.activeCategoryId === 'favorites') {
+                     currentCategoryTitle.textContent = 'お気に入り';
+                     sourcePrompts = state.prompts.filter(p => p.favorited);
+                } else if (state.activeCategoryId !== 'all') {
+                    const category = state.categories.find(c => c.id === state.activeCategoryId);
+                    currentCategoryTitle.textContent = category ? category.name : 'すべてのプロンプト';
+                    sourcePrompts = state.prompts.filter(p => p.categoryId === state.activeCategoryId);
+                } else {
+                    currentCategoryTitle.textContent = 'すべてのプロンプト';
+                    sourcePrompts = state.prompts;
+                }
+                
+                let filteredPrompts = sourcePrompts;
+
+                // AI Service filtering
+                if (selectedAi !== 'all') {
+                    filteredPrompts = filteredPrompts.filter(p => p.aiService === selectedAi);
+                }
+
+                // Search term filtering
+                if (searchTerm) {
+                    filteredPrompts = filteredPrompts.filter(p => 
+                        p.title.toLowerCase().includes(searchTerm) ||
+                        p.content.toLowerCase().includes(searchTerm) ||
+                        (p.tags && p.tags.some(t => t.toLowerCase().includes(searchTerm)))
+                    );
+                }
+
+                // Sorting
+                const sortedPrompts = [...filteredPrompts]; // Copy the array
+                if (currentSortOrder !== 'manual' || isArchiveView) {
+                    sortedPrompts.sort((a, b) => {
+                        if (isArchiveView) return new Date(b.archivedAt) - new Date(a.archivedAt);
+                        
+                        switch (currentSortOrder) {
+                            case 'usage_desc': return (b.usageCount || 0) - (a.usageCount || 0);
+                            case 'updated_asc': return new Date(a.updatedAt || a.createdAt) - new Date(b.updatedAt || b.createdAt);
+                            case 'title_asc': return a.title.localeCompare(b.title, 'ja');
+                            case 'title_desc': return b.title.localeCompare(a.title, 'ja');
+                            case 'created_asc': return new Date(a.createdAt) - new Date(b.createdAt);
+                            case 'created_desc': return new Date(b.createdAt) - new Date(a.createdAt);
+                            case 'updated_desc':
+                            default:
+                               return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+                        }
+                    });
+                }
+                
+                promptList.innerHTML = '';
+                
+                if (sortedPrompts.length === 0) {
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.id = 'prompt-list-empty';
+                    emptyMessage.innerHTML = `
+                        <h3>プロンプトがありません</h3>
+                        <p>${isArchiveView ? 'ゴミ箱は空です。' : '右上の「プロンプトを追加」ボタンから新しいプロンプトを作成しましょう。'}</p>
+                    `;
+                    promptList.style.display = 'block';
+                    promptList.appendChild(emptyMessage);
+                    return;
+                }
+                
+                sortedPrompts.forEach(prompt => {
+                    const card = document.createElement('div');
+                    card.className = 'prompt-card';
+                    card.dataset.id = prompt.id;
+                    card.setAttribute('draggable', !isArchiveView);
+                    if(isArchiveView) card.classList.add('archived');
+
+                    const tagsHTML = (prompt.tags || []).map(tag => `<span class="tag" data-tag="${tag}">${tag}</span>`).join('');
+                    
+                    let infoHTML = '';
+                    if (prompt.aiService) infoHTML += `<strong>AI:</strong> ${prompt.aiService}`;
+                    if (prompt.url) {
+                        try {
+                            const urlHostname = new URL(prompt.url).hostname;
+                             infoHTML += ` | <a href="${prompt.url}" target="_blank" rel="noopener noreferrer">${urlHostname}</a>
+                            <span class="prompt-card-url-actions">
+                              <button class="icon-btn url-copy-btn" title="URLをコピー"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            </span>`;
+                        } catch(e){ /* Invalid URL */ }
+                    }
+                    if (isArchiveView) {
+                        const daysAgo = Math.floor((new Date() - new Date(prompt.archivedAt)) / (1000 * 60 * 60 * 24));
+                        infoHTML += ` | <span style="color: var(--danger-color);">ゴミ箱に移動: ${daysAgo}日前</span>`
+                    }
+
+                    const favIcon = prompt.favorited 
+                        ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>' 
+                        : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>';
+                    
+                    let footerHTML;
+                    if (isArchiveView) {
+                        footerHTML = `
+                            <div class="actions-left"></div>
+                            <div class="actions-right">
+                                <button class="restore-btn">復元</button>
+                                <button class="delete-permanently-btn btn-danger">完全削除</button>
+                            </div>`;
+                    } else {
+                        footerHTML = `
+                            <div class="actions-left">
+                                <button class="icon-btn archive-btn" title="ゴミ箱へ"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                                <button class="icon-btn duplicate-btn" title="複製"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                            </div>
+                            <div class="actions-right">
+                                <button class="window-btn">ウィンドウ</button>
+                                <button class="edit-btn">編集</button>
+                                <button class="copy-btn">コピー</button>
+                            </div>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="prompt-card-header">
+                            <h3 class="prompt-card-title">${prompt.title}</h3>
+                            <button class="prompt-card-fav-btn icon-btn ${prompt.favorited ? 'favorited' : ''}" title="お気に入り" ${isArchiveView ? 'disabled' : ''}>
+                                ${favIcon}
+                            </button>
+                        </div>
+                        <div class="prompt-card-content-wrapper">
+                             <div class="prompt-card-content">${highlightText(prompt.content)}</div>
+                             <button class="quick-copy-btn">Copy</button>
+                        </div>
+                        ${infoHTML ? `<div class="prompt-card-info">${infoHTML}</div>` : ''}
+                        <div class="prompt-card-tags">${tagsHTML}</div>
+                        <div class="prompt-card-footer">${footerHTML}</div>
+                    `;
+                    promptList.appendChild(card);
+                });
+            };
+            
+            const renderTagListView = () => {
+                const allTags = [...new Set(state.prompts.flatMap(p => p.tags || []))].sort((a, b) => a.localeCompare(b, 'ja'));
+                tagListView.innerHTML = `
+                    <h2>タグ一覧 (${allTags.length}件)</h2>
+                    <div id="tag-list-container">
+                        ${allTags.length > 0 ? allTags.map(tag => `<span class="tag" data-tag="${tag}">${tag}</span>`).join('') : '<p>タグが登録されていません。</p>'}
+                    </div>
+                `;
+            };
+
+            const populateAiFilter = () => {
+                const aiServices = [...new Set(state.prompts.map(p => p.aiService).filter(Boolean))];
+                const currentVal = aiFilter.value;
+                aiFilter.innerHTML = '<option value="all">すべてのAI</option>';
+                aiServices.sort().forEach(ai => {
+                    const option = document.createElement('option');
+                    option.value = ai;
+                    option.textContent = ai;
+                    aiFilter.appendChild(option);
+                });
+                if (aiServices.includes(currentVal)) {
+                    aiFilter.value = currentVal;
+                } else {
+                    aiFilter.value = 'all';
+                }
+            };
+
+            // --- EVENT HANDLERS & LOGIC ---
+            
+            // Category Logic
+            newCategoryForm.addEventListener('submit', e => {
+                e.preventDefault();
+                const name = newCategoryInput.value.trim();
+                if (!name) return;
+
+                if (state.editingCategoryId) {
+                    const category = state.categories.find(c => c.id === state.editingCategoryId);
+                    if (category) category.name = name;
+                    state.editingCategoryId = null;
+                } else {
+                    state.categories.push({ id: 'cat-' + Date.now(), name });
+                }
+                saveData();
+                renderCategories();
+                newCategoryInput.value = '';
+                newCategoryInput.placeholder = "新しいカテゴリ名...";
+            });
+
+            const editCategory = (id) => {
+                const category = state.categories.find(c => c.id === id);
+                if (category) {
+                    newCategoryInput.value = category.name;
+                    newCategoryInput.focus();
+                    newCategoryInput.placeholder = "カテゴリ名を更新...";
+                    state.editingCategoryId = id;
+                }
+            };
+
+            const deleteCategory = (id) => {
+                if (confirm('このカテゴリを削除しますか？\nカテゴリ内のプロンプトはすべてゴミ箱に移動します。')) {
+                    const promptsToArchive = state.prompts.filter(p => p.categoryId === id);
+                    promptsToArchive.forEach(p => archivePrompt(p.id, false)); // No re-render per item
+                    
+                    state.categories = state.categories.filter(c => c.id !== id);
+                    if (state.activeCategoryId === id) state.activeCategoryId = 'all';
+                    
+                    saveData();
+                    renderAll();
+                }
+            };
+            
+            // Prompt Modal Logic
+            const openPromptModal = (prompt = null) => {
+                promptForm.reset();
+                const select = getEl('prompt-form-category');
+                select.innerHTML = '';
+                state.categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.name;
+                    select.appendChild(option);
+                });
+                
+                if (prompt) {
+                    modalTitle.textContent = 'プロンプトを編集';
+                    getEl('prompt-form-id').value = prompt.id;
+                    getEl('prompt-form-title').value = prompt.title;
+                    getEl('prompt-form-content').value = prompt.content;
+                    getEl('prompt-form-category').value = prompt.categoryId;
+                    getEl('prompt-form-ai').value = prompt.aiService || '';
+                    getEl('prompt-form-url').value = prompt.url || '';
+                    getEl('prompt-form-tags').value = (prompt.tags || []).join(state.settings.tagDelimiter === ' ' ? ' ' : `${state.settings.tagDelimiter} `);
+                } else {
+                    modalTitle.textContent = 'プロンプトを新規作成';
+                    if (state.activeCategoryId.startsWith('cat-')) {
+                         select.value = state.activeCategoryId;
+                    }
+                }
+                promptModal.classList.add('visible');
+            };
+            
+            // Improved modal closing logic to prevent accidental closing during text selection
+            const closeAllModals = () => {
+                document.querySelectorAll('.modal-overlay').forEach(modal => modal.classList.remove('visible'));
+            };
+            document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', closeAllModals));
+            
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                let isMouseDownOnOverlay = false;
+                modal.addEventListener('mousedown', e => {
+                    if (e.target === modal) {
+                        isMouseDownOnOverlay = true;
+                    }
+                });
+                modal.addEventListener('mouseup', e => {
+                    if (e.target === modal && isMouseDownOnOverlay) {
+                        closeAllModals();
+                    }
+                    isMouseDownOnOverlay = false;
+                });
+            });
+
+            addPromptBtn.addEventListener('click', () => openPromptModal());
+
+            savePromptBtn.addEventListener('click', () => {
+                const id = getEl('prompt-form-id').value;
+                const title = getEl('prompt-form-title').value.trim();
+                const content = getEl('prompt-form-content').value.trim();
+                const categoryId = getEl('prompt-form-category').value;
+                
+                if (!title || !content || !categoryId) {
+                    alert('タイトル、プロンプト本文、カテゴリは必須です。');
+                    return;
+                }
+                
+                const delimiter = state.settings.tagDelimiter === 'tab' ? /\t/ : state.settings.tagDelimiter;
+                let tags = getEl('prompt-form-tags').value.split(delimiter).map(tag => tag.trim()).filter(Boolean);
+                const url = getEl('prompt-form-url').value.trim();
+
+                if(url) {
+                    try {
+                        const urlHostname = new URL(url).hostname;
+                        if (!tags.includes(urlHostname)) tags.push(urlHostname);
+                    } catch (e) { /* Invalid URL, do nothing */ }
+                }
+
+                const promptData = {
+                    title, content, categoryId, 
+                    tags: [...new Set(tags)], // Remove duplicates
+                    aiService: getEl('prompt-form-ai').value.trim(),
+                    url: url,
+                    updatedAt: new Date().toISOString()
+                };
+                
+                if (id) {
+                    const index = state.prompts.findIndex(p => p.id === id);
+                    if (index > -1) {
+                         state.prompts[index] = { ...state.prompts[index], ...promptData };
+                    }
+                } else {
+                    const newPrompt = {
+                        ...promptData,
+                        id: 'prompt-' + Date.now(),
+                        favorited: false,
+                        createdAt: new Date().toISOString(),
+                        usageCount: 0
+                    };
+                    state.prompts.unshift(newPrompt); // Add to the beginning
+                }
+                
+                saveData();
+                renderAll();
+                closeAllModals();
+            });
+
+            // Highlight Toolbar Logic
+            getEl('highlight-btn').addEventListener('click', () => {
+                const textarea = getEl('prompt-form-content');
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const selectedText = textarea.value.substring(start, end);
+                const color = getEl('highlight-color-picker').value;
+
+                if (selectedText) {
+                    const highlightedText = `{[${selectedText}]:[${color}]}`;
+                    textarea.value = textarea.value.substring(0, start) + highlightedText + textarea.value.substring(end);
+                    textarea.focus();
+                    textarea.selectionEnd = start + highlightedText.length;
+                }
+            });
+
+            // Prompt Card Actions
+            getEl('prompt-list-container').addEventListener('click', e => {
+                const card = e.target.closest('.prompt-card');
+                
+                if (e.target.closest('.tag')) {
+                    const tag = e.target.closest('.tag').dataset.tag;
+                    state.activeCategoryId = 'all';
+                    searchBar.value = tag;
+                    renderAll();
+                    return; // Prevent other card actions
+                }
+
+                if (!card) return;
+                
+                const promptId = card.dataset.id;
+                const targetClosest = (selector) => e.target.closest(selector);
+
+                if (targetClosest('.edit-btn')) {
+                    const prompt = state.prompts.find(p => p.id === promptId);
+                    if (prompt) openPromptModal(prompt);
+                }
+                
+                if (targetClosest('.copy-btn, .quick-copy-btn')) {
+                    let prompt;
+                    const promptIndex = state.prompts.findIndex(p => p.id === promptId);
+
+                    if (promptIndex > -1) {
+                        prompt = state.prompts[promptIndex];
+                        prompt.usageCount = (prompt.usageCount || 0) + 1;
+                        prompt.updatedAt = new Date().toISOString();
+                        saveData();
+                        if (sortOrder.value === 'usage_desc') {
+                            renderPrompts();
+                        }
+                    } else {
+                        prompt = state.archivedPrompts.find(p => p.id === promptId);
+                    }
+
+                    if(!prompt) return;
+                    navigator.clipboard.writeText(prompt.content.replace(/{\[([^\]]+)\]:\[([^\]]+)\]}/g, '$1')).then(() => {
+                       showToast('プロンプトをコピーしました！');
+                       if(targetClosest('.copy-btn')){
+                           const btn = targetClosest('.copy-btn');
+                           const originalText = btn.textContent;
+                           btn.textContent = '完了!';
+                           setTimeout(() => { btn.textContent = originalText; }, 1500);
+                       }
+                    });
+                }
+
+                if (targetClosest('.prompt-card-fav-btn')) {
+                     const prompt = state.prompts.find(p => p.id === promptId);
+                     if(prompt) {
+                        prompt.favorited = !prompt.favorited;
+                        prompt.updatedAt = new Date().toISOString();
+                        saveData();
+                        renderPrompts();
+                     }
+                }
+
+                if (targetClosest('.url-copy-btn')) {
+                    const prompt = state.prompts.find(p => p.id === promptId);
+                    if(prompt && prompt.url) {
+                        navigator.clipboard.writeText(prompt.url)
+                            .then(() => showToast('URLをコピーしました！'));
+                    }
+                }
+                
+                if (targetClosest('.window-btn')) {
+                    const prompt = state.prompts.find(p => p.id === promptId);
+                    if(!prompt) return;
+                    const win = window.open("", `prompt-${prompt.id}`, "width=400,height=500,scrollbars=yes,resizable=yes");
+                    const themeBg = state.settings.theme === 'dark' ? '#111827' : '#f4f4f4';
+                    const themeText = state.settings.theme === 'dark' ? '#e5e7eb' : '#1a1a1a';
+                    const themePreBg = state.settings.theme === 'dark' ? '#1f293d' : '#fff';
+                    win.document.write(`
+                        <html><head><title>${prompt.title}</title>
+                        <style>
+                          body { font-family: sans-serif; padding: 1em; line-height: 1.6; background: ${themeBg}; color: ${themeText};}
+                          pre { white-space: pre-wrap; word-wrap: break-word; background: ${themePreBg}; padding: 1em; border-radius: 5px; }
+                          .highlight { padding: 0.1em 0.3em; border-radius: 4px; color: white; }
+                        </style>
+                        </head><body>
+                        <h3>${prompt.title}</h3>
+                        <pre>${highlightText(prompt.content)}</pre>
+                        </body></html>
+                    `);
+                    win.document.close();
+                }
+
+                // Archive actions
+                if (targetClosest('.archive-btn')) archivePrompt(promptId);
+                if (targetClosest('.duplicate-btn')) duplicatePrompt(promptId);
+                if (targetClosest('.restore-btn')) restorePrompt(promptId);
+                if (targetClosest('.delete-permanently-btn')) deletePromptPermanently(promptId);
+            });
+
+            // Archive logic
+            const archivePrompt = (promptId, doRender = true) => {
+                const index = state.prompts.findIndex(p => p.id === promptId);
+                if (index > -1) {
+                    const [promptToArchive] = state.prompts.splice(index, 1);
+                    promptToArchive.archivedAt = new Date().toISOString();
+                    state.archivedPrompts.unshift(promptToArchive);
+                    if(doRender) {
+                        saveData();
+                        renderPrompts();
+                    }
+                }
+            };
+            const restorePrompt = (promptId) => {
+                const index = state.archivedPrompts.findIndex(p => p.id === promptId);
+                if (index > -1) {
+                    const [promptToRestore] = state.archivedPrompts.splice(index, 1);
+                    delete promptToRestore.archivedAt;
+                    promptToRestore.updatedAt = new Date().toISOString();
+                    state.prompts.unshift(promptToRestore);
+                    saveData();
+                    renderPrompts();
+                }
+            };
+            const deletePromptPermanently = (promptId) => {
+                if(confirm('このプロンプトを完全に削除しますか？この操作は元に戻せません。')) {
+                    state.archivedPrompts = state.archivedPrompts.filter(p => p.id !== promptId);
+                    saveData();
+                    renderPrompts();
+                }
+            };
+            const duplicatePrompt = (promptId) => {
+                const originalPrompt = state.prompts.find(p => p.id === promptId);
+                if (originalPrompt) {
+                    const newPrompt = {
+                        ...originalPrompt,
+                        id: 'prompt-' + Date.now(),
+                        title: `${originalPrompt.title} (コピー)`,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        usageCount: 0
+                    };
+                    state.prompts.unshift(newPrompt);
+                    saveData();
+                    renderPrompts();
+                }
+            };
+
+
+            // Search and Filter
+            searchBar.addEventListener('input', renderPrompts);
+            aiFilter.addEventListener('change', renderPrompts);
+            sortOrder.addEventListener('change', () => {
+                state.settings.sortOrder = sortOrder.value;
+                saveData();
+                renderPrompts();
+            });
+            
+            // --- Settings Modal Logic ---
+            openSettingsBtn.addEventListener('click', () => {
+                populateSettings();
+                settingsModal.classList.add('visible');
+            });
+
+            const populateSettings = () => {
+                // General
+                getEl('theme-toggle').textContent = state.settings.theme === 'light' ? 'ダークモードに切り替え' : 'ライトモードに切り替え';
+                getEl('tag-delimiter').value = state.settings.tagDelimiter;
+                
+                // Design
+                getEl('primary-color-picker').value = state.settings.design.primaryColor;
+                getEl('bg-opacity-slider').value = state.settings.design.backgroundOpacity;
+                getEl('bg-opacity-value').textContent = state.settings.design.backgroundOpacity;
+                getEl('bg-blur-slider').value = state.settings.design.backgroundBlur;
+                getEl('bg-blur-value').textContent = state.settings.design.backgroundBlur;
+                getEl('bg-scroll-toggle').checked = state.settings.design.backgroundAttachment === 'fixed';
+                
+                // Data
+                getEl('archive-auto-delete-toggle').checked = state.settings.archiveAutoDelete;
+                updateStorageUsage();
+            };
+
+            // Settings Tabs
+            const tabs = document.querySelectorAll('.tab-btn');
+            const panes = document.querySelectorAll('.tab-pane');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    panes.forEach(p => p.classList.remove('active'));
+                    tab.classList.add('active');
+                    getEl(`tab-${tab.dataset.tab}`).classList.add('active');
+                });
+            });
+
+            // Help Tab Accordion
+            document.querySelectorAll('.help-section-title').forEach(title => {
+                title.addEventListener('click', () => {
+                    const content = title.nextElementSibling;
+                    const isVisible = content.classList.toggle('visible');
+                    title.textContent = isVisible ? `▼ ${title.textContent.slice(2)}` : `▶ ${title.textContent.slice(2)}`;
+                });
+            });
+
+            // Theme Toggle
+            getEl('theme-toggle').addEventListener('click', () => {
+                state.settings.theme = state.settings.theme === 'light' ? 'dark' : 'light';
+                updateDesign();
+                saveData();
+            });
+
+            // Tag Delimiter
+            getEl('tag-delimiter').addEventListener('change', (e) => {
+                state.settings.tagDelimiter = e.target.value;
+                saveData();
+            });
+
+            // Design Customization Handlers
+            const docStyle = document.documentElement.style;
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            };
+
+            const updateDesign = () => {
+                document.body.classList.toggle('dark-mode', state.settings.theme === 'dark');
+                getEl('theme-toggle').textContent = state.settings.theme === 'light' ? 'ダークモードに切り替え' : 'ライトモードに切り替え';
+                
+                const d = state.settings.design;
+                docStyle.setProperty('--primary-color', d.primaryColor);
+
+                const primaryRgb = hexToRgb(d.primaryColor);
+                if (primaryRgb) {
+                    const alpha = state.settings.theme === 'light' ? 0.15 : 0.25;
+                    docStyle.setProperty('--primary-color-light', `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, ${alpha})`);
+                    docStyle.setProperty('--primary-text-color', state.settings.theme === 'dark' ? d.primaryColor : d.primaryColor);
+                }
+                
+                docStyle.setProperty('--background-image', d.backgroundImage ? `url(${d.backgroundImage})` : 'none');
+                docStyle.setProperty('--background-opacity', d.backgroundOpacity);
+                docStyle.setProperty('--background-blur', `${d.backgroundBlur}px`);
+                docStyle.setProperty('--background-attachment', d.backgroundAttachment);
+            };
+            
+            getEl('primary-color-picker').addEventListener('input', e => {
+                state.settings.design.primaryColor = e.target.value;
+                updateDesign();
+                saveData();
+            });
+
+            getEl('background-image-input').addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    state.settings.design.backgroundImage = event.target.result;
+                    updateDesign();
+                    saveData();
+                };
+                reader.readAsDataURL(file);
+            });
+            getEl('clear-background-btn').addEventListener('click', () => {
+                 state.settings.design.backgroundImage = '';
+                 updateDesign();
+                 saveData();
+            });
+
+            getEl('bg-opacity-slider').addEventListener('input', e => {
+                state.settings.design.backgroundOpacity = e.target.value;
+                getEl('bg-opacity-value').textContent = e.target.value;
+                updateDesign();
+                saveData();
+            });
+            getEl('bg-blur-slider').addEventListener('input', e => {
+                state.settings.design.backgroundBlur = e.target.value;
+                getEl('bg-blur-value').textContent = e.target.value;
+                updateDesign();
+                saveData();
+            });
+            getEl('bg-scroll-toggle').addEventListener('change', e => {
+                state.settings.design.backgroundAttachment = e.target.checked ? 'fixed' : 'scroll';
+                updateDesign();
+                saveData();
+            });
+
+            // Data Import/Export/Delete
+            getEl('export-btn').addEventListener('click', () => {
+                const dataStr = JSON.stringify({ categories: state.categories, prompts: state.prompts, archivedPrompts: state.archivedPrompts }, null, 2);
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(new Blob([dataStr], { type: 'application/json' }));
+                link.download = `prompt-hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+            });
+            
+            getEl('import-btn').addEventListener('click', () => getEl('import-file-input').click());
+            getEl('import-file-input').addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (confirm('現在のデータをインポートしたデータで上書きしますか？この操作は元に戻せません。')) {
+                            state.categories = data.categories || [];
+                            state.prompts = data.prompts || [];
+                            state.archivedPrompts = data.archivedPrompts || [];
+                            state.activeCategoryId = 'all';
+                            saveData();
+                            renderAll();
+                            showToast("データのインポートが完了しました。");
+                        }
+                    } catch (error) { alert('無効なJSONファイルです。'); }
+                };
+                reader.readAsText(file);
+                event.target.value = '';
+            });
+
+            getEl('archive-auto-delete-toggle').addEventListener('change', (e) => {
+                state.settings.archiveAutoDelete = e.target.checked;
+                saveData();
+            });
+            
+            getEl('empty-archive-btn').addEventListener('click', () => {
+                if (state.archivedPrompts.length === 0) {
+                    showToast("ゴミ箱は空です。", "info");
+                    return;
+                }
+                if (confirm(`ゴミ箱にある${state.archivedPrompts.length}件のプロンプトをすべて完全に削除しますか？`)) {
+                    state.archivedPrompts = [];
+                    saveData();
+                    renderAll();
+                }
+            });
+
+            getEl('blank-state-btn').addEventListener('click', () => {
+                if (confirm('本当にすべてのプロンプトとカテゴリを削除しますか？ (ゴミ箱も空になります。設定は維持されます)')) {
+                    state.prompts = [];
+                    state.categories = [];
+                    state.archivedPrompts = [];
+                    saveData();
+                    renderAll();
+                }
+            });
+            
+            getEl('delete-all-btn').addEventListener('click', () => {
+                if (confirm('【最終確認】本当にすべてのデータ（設定含む）を削除して完全に初期化しますか？この操作は元に戻せません。')) {
+                     if (prompt('操作を確定するには、 "delete all" と入力してください。') === 'delete all') {
+                        localStorage.removeItem('promptHubData');
+                        localStorage.removeItem('promptHubSettings');
+                        location.reload();
+                     }
+                }
+            });
+
+            const cleanupArchive = () => {
+                if (!state.settings.archiveAutoDelete) return;
+                const thirtyDaysAgo = new Date().getTime() - (30 * 24 * 60 * 60 * 1000);
+                const originalCount = state.archivedPrompts.length;
+                state.archivedPrompts = state.archivedPrompts.filter(p => new Date(p.archivedAt).getTime() > thirtyDaysAgo);
+                if (originalCount > state.archivedPrompts.length) {
+                    saveData();
+                }
+            };
+
+            const updateStorageUsage = () => {
+                 const byteSize = (str) => new Blob([str]).size;
+                 const totalUsage = byteSize(localStorage.getItem('promptHubData') || '') + byteSize(localStorage.getItem('promptHubSettings') || '');
+                 getEl('total-storage-usage').textContent = `${(totalUsage / 1024).toFixed(2)} KB`;
+
+                 const allTags = [...new Set(state.prompts.flatMap(p => p.tags || []))];
+                 getEl('storage-stats').innerHTML = `
+                    <p style="font-size: 0.9em; opacity: 0.8;">
+                        プロンプト: ${state.prompts.length}件 | 
+                        カテゴリ: ${state.categories.length}件 | 
+                        タグ: ${allTags.length}件 |
+                        ゴミ箱: ${state.archivedPrompts.length}件
+                    </p>
+                 `;
+                 
+                 const storageList = getEl('storage-list');
+                 storageList.innerHTML = '';
+                 state.categories.forEach(cat => {
+                     const promptsInCategory = state.prompts.filter(p => p.categoryId === cat.id);
+                     const catSize = byteSize(JSON.stringify(promptsInCategory));
+                     const li = document.createElement('li');
+                     li.innerHTML = `
+                        <span>${cat.name} (${promptsInCategory.length}件)</span>
+                        <span>${(catSize / 1024).toFixed(2)} KB <button class="btn-danger" data-cat-id="${cat.id}" style="padding:2px 6px; font-size: 0.8rem; margin-left: 8px;">削除</button></span>
+                     `;
+                     storageList.appendChild(li);
+                 });
+            };
+            getEl('storage-list').addEventListener('click', e => {
+                if (e.target.tagName === 'BUTTON' && e.target.dataset.catId) {
+                    deleteCategory(e.target.dataset.catId);
+                    // Re-populate settings to reflect changes
+                    populateSettings();
+                }
+            });
+
+
+            // --- INITIALIZATION ---
+            loadData();
+            renderAll();
+        });
+    </script>
+</body>
+</html>
